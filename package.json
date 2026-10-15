@@ -1,0 +1,61 @@
+{
+  "name": "react-native-whistle-tv-offline",
+  "version": "1.0.0",
+  "description": "Lightweight (~16.9 MB) 100% offline speech-to-text engine for Amazon Fire TV & Android TV with native C++ JNI circular buffering and zero cloud latency.",
+  "main": "lib/commonjs/index.js",
+  "module": "lib/module/index.js",
+  "types": "lib/typescript/index.d.ts",
+  "react-native": "src/index.ts",
+  "source": "src/index.ts",
+  "files": [
+    "src",
+    "lib",
+    "android",
+    "!android/build",
+    "!android/.cxx",
+    "LICENSE",
+    "README.md",
+    "CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md",
+    "examples"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "react-native",
+    "fire-tv",
+    "fire-os",
+    "android-tv",
+    "google-tv",
+    "speech-to-text",
+    "offline-stt",
+    "voice-recognition",
+    "whistle-engine",
+    "10-foot-ui",
+    "amazon-developer-hackathon-2026",
+    "zero-passive-listening"
+  ],
+  "author": "Mahaveer K <mahaveer.k2023it@sece.ac.in>",
+  "license": "MIT",
+  "homepage": "https://github.com/MAHAVEER-IT/pandivo-tv#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MAHAVEER-IT/pandivo-tv.git",
+    "directory": "react-native-whistle-tv-offline"
+  },
+  "bugs": {
+    "url": "https://github.com/MAHAVEER-IT/pandivo-tv/issues"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "react": "19.2.3",
+    "react-native": "npm:react-native-tvos@0.86-stable",
+    "typescript": "~5.7.2"
+  }
+}
