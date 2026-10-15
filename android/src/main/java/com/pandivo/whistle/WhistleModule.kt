@@ -113,7 +113,7 @@ class WhistleModule(private val reactContext: ReactApplicationContext) :
         } catch (e: Exception) {
             false
         }
-        promise.resolve(whistleSupported || systemAvailable || true)
+        promise.resolve(whistleSupported || systemAvailable)
     }
 
     @ReactMethod
@@ -203,14 +203,15 @@ class WhistleModule(private val reactContext: ReactApplicationContext) :
                     return@post
                 }
 
-                // Standby path for developer environments without mic hardware
-                Log.w(TAG, "Microphone hardware unavailable; entering virtual voice standby")
-                val standbyMap = Arguments.createMap().apply {
-                    putString("status", "listening")
-                    putString("engine", "virtual_standby")
+                // If neither offline Whistle nor system SpeechRecognizer is available on this device
+                isListening = false
+                Log.w(TAG, "No speech recognition engine available on this architecture/device")
+                val errMap = Arguments.createMap().apply {
+                    putString("error", "No speech recognition service available on this device")
+                    putInt("errorCode", SpeechRecognizer.ERROR_CLIENT)
                 }
-                sendEvent("onSpeechStart", standbyMap)
-                promise.resolve(true)
+                sendEvent("onSpeechError", errMap)
+                promise.reject("UNAVAILABLE", "No speech recognition engine available on this device")
             } catch (e: Exception) {
                 isListening = false
                 Log.e(TAG, "Error starting voice recognition: ${e.message}", e)

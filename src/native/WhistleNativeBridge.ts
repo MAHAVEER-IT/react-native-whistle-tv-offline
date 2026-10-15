@@ -29,7 +29,7 @@ export class WhistleVoiceProvider {
       if (typeof NativeWhistle.isRecognitionAvailable === 'function') {
         return await NativeWhistle.isRecognitionAvailable();
       }
-      return true;
+      return false;
     } catch {
       return false;
     }

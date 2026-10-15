@@ -78,12 +78,13 @@ Java_com_pandivo_whistle_WhistleEngine_nativeTranscribe(
     const char *langStr = language ? env->GetStringUTFChars(language, nullptr) : "en";
     const char *kwStr = keywords ? env->GetStringUTFChars(keywords, nullptr) : "";
 
-    char resultBuf[2048] = {0};
+    char resultBuf[4096] = {0};
     int status = needle_transcribe(
         samples,
         sampleCount,
         langStr,
         kwStr,
+        0, // word_timestamps: 0
         resultBuf,
         sizeof(resultBuf) - 1
     );
