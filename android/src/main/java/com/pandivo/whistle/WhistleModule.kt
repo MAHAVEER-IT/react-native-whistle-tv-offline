@@ -34,6 +34,7 @@ class WhistleModule(private val reactContext: ReactApplicationContext) :
         const val NAME = "WhistleModule"
         private const val TAG = "WhistleModule"
         private const val ACTION_VOICE_INPUT = "com.pandivo.whistle.VOICE_INPUT"
+        private const val ACTION_VOICE_INPUT_ALT = "com.firetv.musicpoc.VOICE_INPUT"
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -45,7 +46,7 @@ class WhistleModule(private val reactContext: ReactApplicationContext) :
 
     private val voiceBroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == ACTION_VOICE_INPUT) {
+            if (intent?.action == ACTION_VOICE_INPUT || intent?.action == ACTION_VOICE_INPUT_ALT) {
                 val query = intent.getStringExtra("query") ?: "Play chill relaxing music"
                 Log.d(TAG, "Simulated voice input broadcast received: $query")
                 val map = Arguments.createMap().apply {
@@ -61,14 +62,17 @@ class WhistleModule(private val reactContext: ReactApplicationContext) :
 
     init {
         try {
-            val filter = IntentFilter(ACTION_VOICE_INPUT)
+            val filter = IntentFilter().apply {
+                addAction(ACTION_VOICE_INPUT)
+                addAction(ACTION_VOICE_INPUT_ALT)
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 reactContext.registerReceiver(voiceBroadcastReceiver, filter, Context.RECEIVER_EXPORTED)
             } else {
                 reactContext.registerReceiver(voiceBroadcastReceiver, filter)
             }
             isReceiverRegistered = true
-            Log.d(TAG, "Registered broadcast receiver for $ACTION_VOICE_INPUT")
+            Log.d(TAG, "Registered broadcast receiver for $ACTION_VOICE_INPUT and $ACTION_VOICE_INPUT_ALT")
         } catch (e: Exception) {
             Log.w(TAG, "Notice registering broadcast receiver: ${e.message}")
         }
