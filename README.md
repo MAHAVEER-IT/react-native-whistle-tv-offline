@@ -1,10 +1,9 @@
 # Whistle AI: Offline Speech-to-Text for Android TV & Fire TV 🎙️📺
 
-[![npm version](https://img.shields.io/badge/npm-1.0.1-blue.svg)](https://www.npmjs.com/package/react-native-whistle-tv-offline)
+[![npm version](https://img.shields.io/badge/npm-1.0.2-blue.svg)](https://www.npmjs.com/package/react-native-whistle-tv-offline)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform: Fire OS & Android TV](https://img.shields.io/badge/Platform-Fire%20OS%20%7C%20Android%20TV-green.svg)](https://developer.amazon.com/fire-tv)
 [![Privacy: Zero Cloud](https://img.shields.io/badge/Privacy-100%25%20On--Device-emerald.svg)](#-privacy--zero-passive-listening-guarantee)
-[![Hackathon: Amazon Developer 2026](https://img.shields.io/badge/Amazon%20Developer%20Hackathon-Open%20Source%20Track-orange.svg)](https://devpost.com)
 
 **Whistle AI** is a lightweight (~16.9 MB), high-performance, 100% offline speech-to-text engine engineered specifically for 10-foot living room interfaces. Built with native C++ JNI bindings and circular audio buffering, it processes voice intent directly on television hardware with **zero cloud dependencies** and **zero passive listening**.
 
@@ -143,12 +142,6 @@ adb shell am broadcast -a com.firetv.musicpoc.VOICE_INPUT --es query "Play chill
 1. **On-Demand Microphone**: The hardware audio stream (`android.media.AudioRecord`) is initialized only after the user actively engages the voice control.
 2. **Volatile Memory**: Audio frames exist only in transient native buffers and are scrubbed from RAM immediately upon recognition completion.
 3. **Zero Play Services Dependency**: Operates independently of Google Speech Services or Amazon cloud endpoints, ensuring complete freedom from background telemetry trackers.
-
----
-
-## 🏆 Amazon Developer Hackathon 2026
-
-This standalone library was extracted from **Pandivo TV** ([`MAHAVEER-IT/pandivo-tv`](https://github.com/MAHAVEER-IT/pandivo-tv)) to fulfill the **Open Source Mini-Challenge ($5K Cash + $5K Credits Stack)**. It provides television app developers an immediate, drag-and-drop solution for high-speed, private, offline speech control.
 
 ---
 
