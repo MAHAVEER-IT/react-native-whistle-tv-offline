@@ -27,6 +27,9 @@ object WhistleEngine {
 
     init {
         try {
+            try {
+                System.loadLibrary("c++_shared")
+            } catch (_: Throwable) {}
             System.loadLibrary("whistle_native")
             isSupported = nativeIsEngineSupported()
             Log.d(TAG, "whistle_native loaded successfully. Engine supported: $isSupported")
@@ -57,7 +60,7 @@ object WhistleEngine {
         }
 
         if (!isSupported) {
-            Log.w(TAG, "Whistle engine not supported natively on this architecture (using graceful fallback)")
+            Log.w(TAG, "Whistle engine not supported natively on this architecture")
             onComplete?.invoke(false)
             return
         }

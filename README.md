@@ -1,6 +1,6 @@
 # Whistle AI: Offline Speech-to-Text for Android TV & Fire TV 🎙️📺
 
-[![npm version](https://img.shields.io/badge/npm-1.0.3-blue.svg)](https://www.npmjs.com/package/react-native-whistle-tv-offline)
+[![npm version](https://img.shields.io/badge/npm-1.0.4-blue.svg)](https://www.npmjs.com/package/react-native-whistle-tv-offline)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform: Fire OS & Android TV](https://img.shields.io/badge/Platform-Fire%20OS%20%7C%20Android%20TV-green.svg)](https://developer.amazon.com/fire-tv)
 [![Privacy: Zero Cloud](https://img.shields.io/badge/Privacy-100%25%20On--Device-emerald.svg)](#-privacy--zero-passive-listening-guarantee)

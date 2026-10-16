@@ -5,7 +5,4 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
-    <!-- Optional storage permission for offline audio caching -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-
 </manifest>

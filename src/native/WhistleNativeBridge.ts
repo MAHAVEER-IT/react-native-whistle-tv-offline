@@ -29,6 +29,9 @@ export class WhistleVoiceProvider {
       if (typeof NativeWhistle.isRecognitionAvailable === 'function') {
         return await NativeWhistle.isRecognitionAvailable();
       }
+      if (typeof NativeWhistle.isAvailable === 'function') {
+        return await NativeWhistle.isAvailable();
+      }
       return false;
     } catch {
       return false;
@@ -109,7 +112,15 @@ export class WhistleVoiceProvider {
 
     try {
       const lang = config.language || 'en';
-      await NativeWhistle?.startListening?.(lang);
+      if (config.keywords && config.keywords.length > 0 && typeof NativeWhistle?.startListeningWithConfig === 'function') {
+        await NativeWhistle.startListeningWithConfig({
+          language: lang,
+          keywords: config.keywords,
+          maxDurationMs: config.maxDurationMs || 5000,
+        });
+      } else {
+        await NativeWhistle?.startListening?.(lang);
+      }
       return true;
     } catch (err: any) {
       this.clearSubscriptions();

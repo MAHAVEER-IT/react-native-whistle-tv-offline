@@ -17,7 +17,7 @@ export interface WhistleSpeechResult {
     language: string;
     /** Whether this is a finalized transcription */
     isFinal: boolean;
-    /** Engine used (e.g. 'whistle_native', 'android_speech_recognizer') */
+    /** Engine used ('whistle_native', 'adb_voice_command', or 'simulated') */
     engine: string;
     /** Time to first token in milliseconds */
     ttftMs?: number;

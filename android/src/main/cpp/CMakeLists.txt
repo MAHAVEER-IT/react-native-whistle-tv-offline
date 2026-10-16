@@ -33,8 +33,9 @@ elseif(${ANDROID_ABI} STREQUAL "armeabi-v7a" AND EXISTS "${CMAKE_CURRENT_SOURCE_
     )
     target_compile_definitions(whistle_native PRIVATE HAVE_WHISTLE_ENGINE=1)
 elseif(${ANDROID_ABI} STREQUAL "x86_64" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/libs/x86_64/libneedle.a")
-    message(STATUS "Whistle Native: Building for x86_64 with on-device needle inference engine")
-    add_library(whistle_native SHARED whistle_jni.cpp)
+    message(STATUS "Whistle Native: Building for x86_64 with on-device needle inference engine and glibc compatibility shim")
+    add_library(whistle_native SHARED whistle_jni.cpp glibc_compat.c)
+    target_link_options(whistle_native PRIVATE -static-libstdc++)
     target_link_libraries(
         whistle_native
         ${CMAKE_CURRENT_SOURCE_DIR}/libs/x86_64/libneedle.a
