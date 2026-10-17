@@ -48,6 +48,14 @@ class WhistleModule(private val reactContext: ReactApplicationContext) :
         const val ERROR_NO_MATCH = 7
         const val ERROR_INSUFFICIENT_PERMISSIONS = 9
         const val ERROR_WHISTLE_UNSUPPORTED = 10
+
+        // Known Whisper neural network silence hallucinations
+        private val KNOWN_SILENCE_HALLUCINATIONS = setOf(
+            "thank you", "thank you.", "thank you!", "thank you very much", "thank you very much.",
+            "happy birthday", "happy birthday!", "happy birthday.",
+            "thanks for watching", "thanks for watching.", "thanks for watching!",
+            "please subscribe", "subscribe", "subtitles by", "you", ".", "..."
+        )
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -138,7 +146,14 @@ class WhistleModule(private val reactContext: ReactApplicationContext) :
 
     @ReactMethod
     fun startListening(language: String?, promise: Promise) {
-        startListeningInternal(language = language, keywords = null, promise = promise)
+        startListeningInternal(
+            language = language,
+            keywords = null,
+            maxDurationMs = AudioRecordEngine.DEFAULT_MAX_DURATION_MS,
+            postSpeechSilenceMs = AudioRecordEngine.DEFAULT_POST_SPEECH_SILENCE_MS,
+            cleanPunctuation = false,
+            promise = promise
+        )
     }
 
     @ReactMethod
@@ -156,10 +171,40 @@ class WhistleModule(private val reactContext: ReactApplicationContext) :
         } else {
             null
         }
-        startListeningInternal(language = language, keywords = keywords, promise = promise)
+        val maxDurationMs = if (config.hasKey("maxDurationMs")) {
+            config.getDouble("maxDurationMs").toLong()
+        } else {
+            AudioRecordEngine.DEFAULT_MAX_DURATION_MS
+        }
+        val postSpeechSilenceMs = if (config.hasKey("postSpeechSilenceMs")) {
+            config.getDouble("postSpeechSilenceMs").toLong()
+        } else {
+            AudioRecordEngine.DEFAULT_POST_SPEECH_SILENCE_MS
+        }
+        val cleanPunctuation = if (config.hasKey("cleanPunctuation")) {
+            config.getBoolean("cleanPunctuation")
+        } else {
+            false
+        }
+
+        startListeningInternal(
+            language = language,
+            keywords = keywords,
+            maxDurationMs = maxDurationMs,
+            postSpeechSilenceMs = postSpeechSilenceMs,
+            cleanPunctuation = cleanPunctuation,
+            promise = promise
+        )
     }
 
-    private fun startListeningInternal(language: String?, keywords: String?, promise: Promise) {
+    private fun startListeningInternal(
+        language: String?,
+        keywords: String?,
+        maxDurationMs: Long,
+        postSpeechSilenceMs: Long,
+        cleanPunctuation: Boolean,
+        promise: Promise
+    ) {
         val targetLanguage = if (language.isNullOrBlank()) "en" else language
 
         mainHandler.post {
@@ -197,7 +242,7 @@ class WhistleModule(private val reactContext: ReactApplicationContext) :
 
                 isListening = true
 
-                Log.d(TAG, "Starting on-device native Whistle voice recognition ($targetLanguage)...")
+                Log.d(TAG, "Starting on-device native Whistle voice recognition ($targetLanguage, maxDurationMs=${maxDurationMs}ms, cleanPunctuation=$cleanPunctuation)...")
 
                 val startMap = Arguments.createMap().apply {
                     putString("status", "listening")
@@ -206,8 +251,10 @@ class WhistleModule(private val reactContext: ReactApplicationContext) :
                 sendEvent("onSpeechStart", startMap)
 
                 audioRecordEngine.startRecording(
+                    maxDurationMs = maxDurationMs,
+                    postSpeechSilenceMs = postSpeechSilenceMs,
                     onAudioReady = { pcmFloatSamples ->
-                        handleWhistleAudioRecorded(pcmFloatSamples, targetLanguage, keywords)
+                        handleWhistleAudioRecorded(pcmFloatSamples, targetLanguage, keywords, cleanPunctuation)
                     },
                     onError = { errorMsg ->
                         mainHandler.post {
@@ -287,8 +334,13 @@ class WhistleModule(private val reactContext: ReactApplicationContext) :
         // Required for RN NativeEventEmitter
     }
 
-    private fun handleWhistleAudioRecorded(samples: FloatArray, language: String, keywords: String?) {
-        if (samples.isEmpty()) {
+    private fun handleWhistleAudioRecorded(
+        rawSamples: FloatArray,
+        language: String,
+        keywords: String?,
+        cleanPunctuation: Boolean
+    ) {
+        if (rawSamples.isEmpty()) {
             mainHandler.post {
                 isListening = false
                 val map = Arguments.createMap().apply {
@@ -300,7 +352,10 @@ class WhistleModule(private val reactContext: ReactApplicationContext) :
             return
         }
 
-        // Calculate audio RMS and peak to verify speech presence
+        // Step 1: Preprocess audio (High-pass ~80Hz, VAD silence trimming, AGC 0.85 peak normalization)
+        val samples = AudioPreprocessor.process(rawSamples)
+
+        // Step 2: Calculate audio RMS and peak to verify speech presence
         var sumSquares = 0.0
         var peak = 0.0f
         for (sample in samples) {
@@ -309,8 +364,23 @@ class WhistleModule(private val reactContext: ReactApplicationContext) :
             if (absVal > peak) peak = absVal
         }
         val rms = kotlin.math.sqrt(sumSquares / samples.size).toFloat()
-        val hasSpeechEnergy = rms > 0.007f || peak > 0.04f
-        Log.d(TAG, "Microphone audio captured: ${samples.size} samples, RMS: $rms, Peak: $peak, speechEnergy=$hasSpeechEnergy")
+        val hasSpeechEnergy = rms > 0.010f || peak > 0.05f
+        Log.d(TAG, "Audio captured & preprocessed: ${samples.size} samples, RMS: $rms, Peak: $peak, speechEnergy=$hasSpeechEnergy")
+
+        // Step 3: PRE-INFERENCE SILENCE GATING
+        // Guard against Whisper neural network silence hallucinations on quiet mic recordings
+        if (!hasSpeechEnergy) {
+            Log.w(TAG, "Audio energy below speech threshold (RMS: $rms, Peak: $peak). Emitting no-speech timeout error.")
+            mainHandler.post {
+                isListening = false
+                val map = Arguments.createMap().apply {
+                    putString("error", "No speech detected")
+                    putInt("errorCode", ERROR_SPEECH_TIMEOUT)
+                }
+                sendEvent("onSpeechError", map)
+            }
+            return
+        }
 
         backgroundExecutor.execute {
             Log.d(TAG, "Transcribing ${samples.size} PCM float samples with Whistle C++ engine...")
@@ -322,10 +392,31 @@ class WhistleModule(private val reactContext: ReactApplicationContext) :
 
             mainHandler.post {
                 isListening = false
+                var recognizedText = ""
+                var isHallucination = false
+
                 if (result.isSuccess && result.text.isNotBlank()) {
-                    Log.i(TAG, "Whistle transcription result: \"${result.text}\" (TTFT: ${result.ttftMs}ms)")
+                    val rawText = result.text.trim()
+                    val normalized = rawText.lowercase().trim()
+
+                    // Step 4: POST-INFERENCE HALLUCINATION BLACKLIST
+                    if (KNOWN_SILENCE_HALLUCINATIONS.contains(normalized) && rms < 0.020f) {
+                        Log.w(TAG, "Discarded Whisper silence hallucination: \"$rawText\" (RMS: $rms, Peak: $peak)")
+                        isHallucination = true
+                        recognizedText = ""
+                    } else {
+                        recognizedText = if (cleanPunctuation) {
+                            rawText.replace(Regex("[.,/#!$%^&*;:{}=\\-_`~()?]+$"), "").trim()
+                        } else {
+                            rawText
+                        }
+                    }
+                }
+
+                if (recognizedText.isNotBlank()) {
+                    Log.i(TAG, "Whistle transcription result: \"$recognizedText\" (TTFT: ${result.ttftMs}ms)")
                     val map = Arguments.createMap().apply {
-                        putString("text", result.text)
+                        putString("text", recognizedText)
                         putString("language", result.language)
                         putBoolean("isFinal", true)
                         putDouble("ttftMs", result.ttftMs.toDouble())
@@ -334,14 +425,14 @@ class WhistleModule(private val reactContext: ReactApplicationContext) :
                     }
                     sendEvent("onSpeechResults", map)
                 } else {
-                    Log.w(TAG, "No speech recognized or speech was unintelligible (hasEnergy=$hasSpeechEnergy, RMS=$rms, Peak=$peak, err=${result.error})")
+                    Log.w(TAG, "No speech recognized or speech was unintelligible (hasEnergy=$hasSpeechEnergy, isHallucination=$isHallucination, RMS=$rms, Peak=$peak, err=${result.error})")
                     val map = Arguments.createMap().apply {
                         putString(
                             "error",
-                            if (hasSpeechEnergy) (result.error ?: "Could not recognize speech, please try speaking again")
-                            else "No speech detected"
+                            if (isHallucination || !hasSpeechEnergy) "No speech detected"
+                            else (result.error ?: "Could not recognize speech, please try speaking again")
                         )
-                        putInt("errorCode", if (hasSpeechEnergy) ERROR_NO_MATCH else ERROR_SPEECH_TIMEOUT)
+                        putInt("errorCode", if (hasSpeechEnergy && !isHallucination) ERROR_NO_MATCH else ERROR_SPEECH_TIMEOUT)
                     }
                     sendEvent("onSpeechError", map)
                 }

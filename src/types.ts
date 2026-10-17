@@ -10,11 +10,17 @@ export interface WhistleConfig {
   keywords?: string[];
   /** Maximum recording duration in milliseconds before auto-stop (default: 6000) */
   maxDurationMs?: number;
+  /** Silence duration in milliseconds after speech before automatically stopping capture (default: 1400) */
+  postSpeechSilenceMs?: number;
+  /** Automatically strip trailing punctuation (e.g. '.', '!') for clean search and voice command matching (default: true) */
+  cleanPunctuation?: boolean;
 }
 
 export interface WhistleSpeechResult {
   /** The final transcribed speech text */
   text: string;
+  /** The raw unstripped transcribed speech text if cleanPunctuation was applied */
+  rawText?: string;
   /** Language detected or used */
   language: string;
   /** Whether this is a finalized transcription */

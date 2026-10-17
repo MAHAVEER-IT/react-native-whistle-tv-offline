@@ -15,9 +15,9 @@ class AudioRecordEngine {
         const val SAMPLE_RATE = 16000
         private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO
         private const val AUDIO_FORMAT = AudioFormat.ENCODING_PCM_16BIT
-        private const val MAX_DURATION_MS = 5000L // 5 seconds max for TV voice commands
+        const val DEFAULT_MAX_DURATION_MS = 6000L // 6 seconds default for TV voice commands
         private const val SPEECH_RMS_THRESHOLD = 0.010f // Threshold for detecting voice activity
-        private const val POST_SPEECH_SILENCE_MS = 1400L // Auto-stop 1.4s after speech stops
+        const val DEFAULT_POST_SPEECH_SILENCE_MS = 1400L // Auto-stop 1.4s after speech stops
     }
 
     private var audioRecord: AudioRecord? = null
@@ -26,6 +26,16 @@ class AudioRecordEngine {
 
     @SuppressLint("MissingPermission")
     fun startRecording(
+        onAudioReady: (FloatArray) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        startRecording(DEFAULT_MAX_DURATION_MS, DEFAULT_POST_SPEECH_SILENCE_MS, onAudioReady, onError)
+    }
+
+    @SuppressLint("MissingPermission")
+    fun startRecording(
+        maxDurationMs: Long,
+        postSpeechSilenceMs: Long,
         onAudioReady: (FloatArray) -> Unit,
         onError: (String) -> Unit
     ) {
@@ -79,13 +89,15 @@ class AudioRecordEngine {
                 val recordedSamples = mutableListOf<Short>()
                 val readBuffer = ShortArray(bufferSize / 2)
                 val startTime = System.currentTimeMillis()
+                val maxDur = if (maxDurationMs > 0L) maxDurationMs else DEFAULT_MAX_DURATION_MS
+                val postSilence = if (postSpeechSilenceMs > 0L) postSpeechSilenceMs else DEFAULT_POST_SPEECH_SILENCE_MS
                 var speechDetected = false
                 var lastSpeechTime = 0L
 
                 try {
                     while (isRecording.get()) {
                         val elapsed = System.currentTimeMillis() - startTime
-                        if (elapsed >= MAX_DURATION_MS) {
+                        if (elapsed >= maxDur) {
                             Log.d(TAG, "Max recording duration reached (${elapsed}ms). Ending capture.")
                             break
                         }
@@ -112,8 +124,8 @@ class AudioRecordEngine {
                                     speechDetected = true
                                 }
                                 lastSpeechTime = now
-                            } else if (speechDetected && (now - lastSpeechTime) > POST_SPEECH_SILENCE_MS) {
-                                Log.d(TAG, "Speech finished followed by ${POST_SPEECH_SILENCE_MS}ms silence. Auto-stopping capture.")
+                            } else if (speechDetected && (now - lastSpeechTime) > postSilence) {
+                                Log.d(TAG, "Speech finished followed by ${postSilence}ms silence. Auto-stopping capture.")
                                 break
                             }
                         } else if (readCount < 0) {

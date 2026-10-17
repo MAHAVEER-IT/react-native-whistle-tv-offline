@@ -45,6 +45,8 @@ export function useWhistleVoice(options: UseWhistleVoiceOptions = {}): UseWhistl
         language: optionsRef.current.language || 'en',
         keywords: optionsRef.current.keywords,
         maxDurationMs: optionsRef.current.maxDurationMs || 6000,
+        postSpeechSilenceMs: optionsRef.current.postSpeechSilenceMs || 1400,
+        cleanPunctuation: optionsRef.current.cleanPunctuation !== false,
       }
     );
 

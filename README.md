@@ -1,11 +1,11 @@
 # Whistle AI: Offline Speech-to-Text for Android TV & Fire TV 🎙️📺
 
-[![npm version](https://img.shields.io/badge/npm-1.0.4-blue.svg)](https://www.npmjs.com/package/react-native-whistle-tv-offline)
+[![npm version](https://img.shields.io/badge/npm-1.1.0-blue.svg)](https://www.npmjs.com/package/react-native-whistle-tv-offline)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Platform: Fire OS & Android TV](https://img.shields.io/badge/Platform-Fire%20OS%20%7C%20Android%20TV-green.svg)](https://developer.amazon.com/fire-tv)
 [![Privacy: Zero Cloud](https://img.shields.io/badge/Privacy-100%25%20On--Device-emerald.svg)](#-privacy--zero-passive-listening-guarantee)
 
-**Whistle AI** is a lightweight (~16.9 MB), high-performance, 100% offline speech-to-text engine engineered specifically for 10-foot living room interfaces. Built with native C++ JNI bindings and circular audio buffering, it processes voice intent directly on television hardware with **zero cloud dependencies** and **zero passive listening**.
+**Whistle AI** is a lightweight (~16.9 MB), high-performance, 100% offline speech-to-text engine engineered specifically for 10-foot living room interfaces. Built with native C++ JNI bindings, hardware-tuned DSP preprocessing, and circular audio buffering, it processes voice intent directly on television hardware with **zero cloud dependencies**, **zero passive listening**, and **zero neural silence hallucinations**.
 
 ---
 
@@ -14,6 +14,11 @@
 - **⚡ Latency**: **~120ms** total inference pipeline (voice input to tokenized transcript).
 - **📦 Footprint**: **~16.9 MB binary** (`whistle.cact`), avoiding heavy cloud SDK bloat or Google Play Services dependencies.
 - **🛡️ Privacy Compliance**: **100% Data Sovereignty**—raw PCM audio is processed in transient RAM and instantly zero-purged. No voice recordings ever touch permanent storage or remote cloud servers.
+- **🎛️ TV Remote Audio Preprocessing**:
+  - **80Hz High-Pass Filter**: Strips DC offset and low-frequency living room rumble.
+  - **VAD Silence Trimming**: Isolates speech boundaries with a 160ms safety cushion.
+  - **Peak AGC Normalization**: Automatically scales low-amplitude remote microphone signals to 0.85 nominal dynamic range.
+- **🚫 Zero Silence Hallucinations**: Pre-inference RMS energy gating + post-inference token blacklist eliminates phantom Whisper utterances (`"Thank you."`, `"Happy birthday!"`) on dead silence.
 - **🎮 10-Foot Remote Friendly**: Native support for Amazon Fire TV Alexa Voice Remote and Android TV D-pad controllers.
 
 ---
@@ -25,9 +30,12 @@ Whistle bridges high-performance native audio recording directly to an optimized
 ```mermaid
 flowchart LR
     A["Hardware Microphone<br/>(Fire TV Voice Remote)"] --> B["AudioRecordEngine.kt<br/>(16kHz 16-Bit Mono PCM)"]
-    B --> C["whistle_jni.cpp<br/>(Native C++ JNI Bridge)"]
+    B --> DSP["AudioPreprocessor.kt<br/>(80Hz High-Pass + VAD Trim + AGC 0.85)"]
+    DSP --> Gating{"Silence Energy Gating<br/>(RMS > 0.010)"}
+    Gating -- Speech Detected --> C["whistle_jni.cpp<br/>(Native C++ JNI Bridge)"]
+    Gating -- Silence --> Timeout["Emit No-Speech Timeout<br/>(Zero Hallucinations)"]
     C --> D["Whistle Core Inference<br/>(whistle.cact / libwhistle_core.so)"]
-    D --> E["WhistleModule.kt<br/>(React Native Bridge)"]
+    D --> E["WhistleModule.kt<br/>(Hallucination Rejection & Clean Text)"]
     E --> F["WhistleVoiceProvider / useWhistleVoice<br/>(React Native TV 0.86+)"]
     
     B -. Immediate Discard .-> G[("Transient RAM Purged<br/>(Zero Disk Writes)")]
